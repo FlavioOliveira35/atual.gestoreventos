@@ -594,8 +594,10 @@ async function handleFormSubmit(e) {
 }
 
 async function editEvento(id, event) {
+    // Impede que o clique no botão cause ações indesejadas (como recarregar a página ou a tabela)
     event.stopPropagation();
-    updateViewState('loading');
+    event.preventDefault();
+
     try {
         const response = await fetchWithAuth(`${API_BASE_URL}/${id}`);
         if (!response.ok) throw new Error('Evento não encontrado para edição.');
@@ -603,8 +605,6 @@ async function editEvento(id, event) {
         openModal(evento);
     } catch (error) {
         showToast('Erro', error.message, 'error');
-    } finally {
-        updateViewState('data'); // Assume we go back to the data view
     }
 }
 
