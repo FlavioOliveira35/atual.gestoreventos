@@ -31,6 +31,7 @@ function initializeDOMElements() {
         statusFilterBtn: document.getElementById('statusFilterBtn'),
         statusFilterPopover: document.getElementById('statusFilterPopover'),
         statusCheckboxes: document.getElementById('statusCheckboxes'),
+        stateCheckboxes: document.getElementById('stateCheckboxes'), // Adicionado
         statusApplyBtn: document.getElementById('statusApplyBtn'),
         searchFilter: document.getElementById('searchFilter'),
         btnLimparFiltros: document.getElementById('btnLimparFiltros'),
@@ -99,6 +100,13 @@ function setupEventListeners() {
         toggleStatusPopover(false);
     });
     elements.searchFilter.addEventListener('input', debounce(applyFilters, 300));
+
+    // Adiciona event listeners para os checkboxes de estado
+    if (elements.stateCheckboxes) {
+        elements.stateCheckboxes.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.addEventListener('change', () => applyFilters());
+        });
+    }
 
     document.addEventListener('click', (e) => {
         if (elements.statusFilterPopover && !elements.statusFilterPopover.contains(e.target) && !elements.statusFilterBtn.contains(e.target)) {
@@ -194,6 +202,12 @@ function getFilterParams() {
     if (data_fim) params.append('data_fim', data_fim);
     if (data_encerramento_inicio) params.append('data_encerramento_inicio', data_encerramento_inicio);
     if (data_encerramento_fim) params.append('data_encerramento_fim', data_encerramento_fim);
+
+    const selectedStates = getSelectedStates();
+    if (selectedStates.length > 0) {
+        params.append('states', selectedStates.join(','));
+    }
+
     params.append('_', new Date().getTime());
     return params;
 }
@@ -567,8 +581,14 @@ function toggleFilterCollapse() {
 
 function clearFilters() {
     elements.searchFilter.value = '';
-    const checkboxes = elements.statusCheckboxes.querySelectorAll('input[type="checkbox"]');
-    checkboxes.forEach(cb => cb.checked = true);
+    const statusCheckboxes = elements.statusCheckboxes.querySelectorAll('input[type="checkbox"]');
+    statusCheckboxes.forEach(cb => cb.checked = true);
+
+    if (elements.stateCheckboxes) {
+        const stateCheckboxes = elements.stateCheckboxes.querySelectorAll('input[type="checkbox"]');
+        stateCheckboxes.forEach(cb => cb.checked = false); // Desmarcar os estados
+    }
+
     elements.advancedFilterForm.reset();
     elements.btnHeaderBaixarExcel.classList.add('hidden');
     applyFilters();
@@ -614,6 +634,12 @@ function toggleStatusPopover(forceState) {
 
 function getSelectedStatuses() {
     const checkboxes = elements.statusCheckboxes.querySelectorAll('input[type="checkbox"]:checked');
+    return Array.from(checkboxes).map(cb => cb.value);
+}
+
+function getSelectedStates() {
+    if (!elements.stateCheckboxes) return [];
+    const checkboxes = elements.stateCheckboxes.querySelectorAll('input[type="checkbox"]:checked');
     return Array.from(checkboxes).map(cb => cb.value);
 }
 

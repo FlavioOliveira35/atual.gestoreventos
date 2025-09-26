@@ -67,11 +67,14 @@ def get_filtered_query(current_user):
             if other_statuses:
                 conditions.append(Evento.status.in_(other_statuses))
 
-            # Usar func.current_date() para obter a data atual do banco de dados
+            # Compara se a data de encerramento está dentro do dia de hoje (timezone-safe)
+            today_start = func.date_trunc('day', func.now())
+            today_end = today_start + db.text("INTERVAL '1 day'")
             conditions.append(
                 db.and_(
                     Evento.status == 'Encerrado',
-                    cast(Evento.data_encerramento, Date) == func.current_date()
+                    Evento.data_encerramento >= today_start,
+                    Evento.data_encerramento < today_end
                 )
             )
             query = query.filter(db.or_(*conditions))
