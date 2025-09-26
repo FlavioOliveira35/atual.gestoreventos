@@ -14,6 +14,7 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256))
+    is_readonly = db.Column(db.Boolean, default=False, nullable=False)
     created_by_user = db.Column(db.String(80))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     filter_preferences = db.Column(Text) # Para armazenar JSON com preferências de filtro
@@ -41,5 +42,6 @@ class User(db.Model):
             'created_by_user': self.created_by_user,
             'created_at': f"{self.created_at.isoformat()}Z" if self.created_at else None,
             'cities': [city.to_dict() for city in self.cities],
-            'filter_preferences': self.filter_preferences
+            'filter_preferences': self.filter_preferences,
+            'is_readonly': self.is_readonly
         }

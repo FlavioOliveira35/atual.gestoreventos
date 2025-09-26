@@ -92,9 +92,15 @@
                     <input type="text" id="searchFilter" class="filter-input" placeholder="Digite para buscar...">
                 </div>
                 <div class="filter-actions">
+                    <button class="btn btn-secondary" id="btnStats" title="Estatísticas do Dia">
+                        <i class="fas fa-chart-pie"></i>
+                    </button>
+                    <button class="btn btn-secondary" id="btnStateFilter" title="Filtrar por Estado">
+                        <i class="fas fa-map-marked-alt"></i>
+                    </button>
                     <button class="btn btn-secondary" id="btnFiltroAvancado">
                         <i class="fas fa-filter"></i>
-                        Filtros
+                        Avançado
                     </button>
                     <button class="btn btn-secondary" id="btnLimparFiltros">
                         <i class="fas fa-times"></i>
@@ -579,6 +585,12 @@
                         <label><i class="fas fa-city"></i> Cidades Permitidas</label>
                         <div id="userCityCheckboxes" class="checkbox-container"></div>
                     </div>
+                    <div class="form-group">
+                        <div class="checkbox-group single">
+                            <input type="checkbox" id="is_readonly" name="is_readonly">
+                            <label for="is_readonly"><i class="fas fa-user-lock"></i> Usuário Somente Leitura (Bloqueado)</label>
+                        </div>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -594,6 +606,58 @@
     <script src="login.js"></script>
     <script src="script.js"></script>
     <script src="management.js"></script>
+
+    <!-- Stats Modal -->
+    <div class="modal-overlay" id="statsModalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-chart-pie"></i> Estatísticas do Dia</h2>
+                <button class="modal-close" id="statsModalClose"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body" id="statsModalBody">
+                <!-- As estatísticas serão preenchidas aqui pelo JS -->
+            </div>
+             <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="statsModalCloseBtn">
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- State Filter Modal -->
+    <div class="modal-overlay" id="stateFilterModalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-map-marked-alt"></i> Filtrar por Estado</h2>
+                <button class="modal-close" id="stateFilterModalClose"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div id="stateCheckboxesModal" class="checkbox-container">
+                     <div class="checkbox-group">
+                        <input type="checkbox" id="modal_state_sc" value="SC">
+                        <label for="modal_state_sc">Santa Catarina (SC)</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="modal_state_rs" value="RS">
+                        <label for="modal_state_rs">Rio Grande do Sul (RS)</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="modal_state_pr" value="PR">
+                        <label for="modal_state_pr">Paraná (PR)</label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                 <button type="button" class="btn btn-secondary" id="btnLimparFiltroEstado">
+                    <i class="fas fa-eraser"></i> Limpar
+                </button>
+                <button type="button" class="btn btn-primary" id="btnAplicarFiltroEstado">
+                    <i class="fas fa-check"></i> Aplicar
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Comment Modal -->
     <div class="modal-overlay" id="commentModalOverlay">

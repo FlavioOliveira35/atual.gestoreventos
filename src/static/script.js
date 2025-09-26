@@ -31,6 +31,7 @@ function initializeDOMElements() {
         statusFilterBtn: document.getElementById('statusFilterBtn'),
         statusFilterPopover: document.getElementById('statusFilterPopover'),
         statusCheckboxes: document.getElementById('statusCheckboxes'),
+        stateCheckboxes: document.getElementById('stateCheckboxes'), // Adicionado
         statusApplyBtn: document.getElementById('statusApplyBtn'),
         searchFilter: document.getElementById('searchFilter'),
         btnLimparFiltros: document.getElementById('btnLimparFiltros'),
@@ -47,6 +48,17 @@ function initializeDOMElements() {
         btnHeaderBaixarExcel: document.getElementById('btnHeaderBaixarExcel'),
         filtersToggle: document.getElementById('filters-toggle'),
         filtersSection: document.querySelector('.filters-section'),
+        btnStats: document.getElementById('btnStats'),
+        statsModalOverlay: document.getElementById('statsModalOverlay'),
+        statsModalClose: document.getElementById('statsModalClose'),
+        statsModalBody: document.getElementById('statsModalBody'),
+        statsModalCloseBtn: document.getElementById('statsModalCloseBtn'),
+        btnStateFilter: document.getElementById('btnStateFilter'),
+        stateFilterModalOverlay: document.getElementById('stateFilterModalOverlay'),
+        stateFilterModalClose: document.getElementById('stateFilterModalClose'),
+        stateCheckboxesModal: document.getElementById('stateCheckboxesModal'),
+        btnAplicarFiltroEstado: document.getElementById('btnAplicarFiltroEstado'),
+        btnLimparFiltroEstado: document.getElementById('btnLimparFiltroEstado'),
     };
 }
 
@@ -112,6 +124,30 @@ function setupEventListeners() {
         if (e.target === elements.advancedFilterModalOverlay) closeAdvancedFilterModal();
     });
 
+    // Event Listeners para o Modal de Estatísticas
+    elements.btnStats.addEventListener('click', openStatsModal);
+    elements.statsModalClose.addEventListener('click', closeStatsModal);
+    elements.statsModalCloseBtn.addEventListener('click', closeStatsModal);
+    elements.statsModalOverlay.addEventListener('click', (e) => {
+        if (e.target === elements.statsModalOverlay) closeStatsModal();
+    });
+
+    // Event Listeners para o Modal de Filtro de Estado
+    elements.btnStateFilter.addEventListener('click', openStateFilterModal);
+    elements.stateFilterModalClose.addEventListener('click', closeStateFilterModal);
+    elements.stateFilterModalOverlay.addEventListener('click', (e) => {
+        if (e.target === elements.stateFilterModalOverlay) closeStateFilterModal();
+    });
+    elements.btnAplicarFiltroEstado.addEventListener('click', () => {
+        applyFilters();
+        closeStateFilterModal();
+    });
+    elements.btnLimparFiltroEstado.addEventListener('click', () => {
+        elements.stateCheckboxesModal.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+        applyFilters();
+        closeStateFilterModal();
+    });
+
     elements.btnAplicarFiltroAvancado.addEventListener('click', () => {
         applyFilters();
         closeAdvancedFilterModal();
@@ -169,10 +205,29 @@ function initializeApp() {
 function displayUserInfo() {
     const userInfo = document.getElementById('userInfo');
     const user = JSON.parse(localStorage.getItem('user'));
+    const btnManage = document.getElementById('btnManage');
+
     if (user && user.username) {
         userInfo.innerHTML = `Usuário: <strong>${user.username}</strong>`;
+
+        // Oculta o botão "Novo Evento" se o usuário for somente leitura
+        if (user.is_readonly) {
+            elements.btnNovo.style.display = 'none';
+        } else {
+            elements.btnNovo.style.display = 'inline-block';
+        }
+
+        // Mostra/oculta o botão de Gerenciamento apenas para o admin
+        if (btnManage && user.email === 'flavio.coliveira@telefonica.com') {
+            btnManage.style.display = 'inline-block';
+        } else if (btnManage) {
+            btnManage.style.display = 'none';
+        }
+
     } else {
         userInfo.style.display = 'none';
+        elements.btnNovo.style.display = 'none';
+        if (btnManage) btnManage.style.display = 'none';
     }
 }
 
@@ -194,8 +249,69 @@ function getFilterParams() {
     if (data_fim) params.append('data_fim', data_fim);
     if (data_encerramento_inicio) params.append('data_encerramento_inicio', data_encerramento_inicio);
     if (data_encerramento_fim) params.append('data_encerramento_fim', data_encerramento_fim);
+
+    const selectedStates = getSelectedStates();
+    if (selectedStates.length > 0) {
+        params.append('states', selectedStates.join(','));
+    }
+
     params.append('_', new Date().getTime());
     return params;
+}
+
+async function loadStats() {
+    const statsBody = elements.statsModalBody;
+    statsBody.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>';
+
+    try {
+        const params = getFilterParams();
+        const url = `/api/eventos/stats?${params.toString()}`;
+        const response = await fetchWithAuth(url);
+
+        if (!response.ok) {
+            throw new Error(`Erro HTTP: ${response.status}`);
+        }
+        const stats = await response.json();
+
+        statsBody.innerHTML = `
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-card-header">Encerrado (Hoje)</div>
+                    <div class="stat-card-value">${stats.encerrado_hoje ?? '0'}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-header">Pendente</div>
+                    <div class="stat-card-value">${stats.pendente ?? '0'}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-header">Aberto</div>
+                    <div class="stat-card-value">${stats.aberto ?? '0'}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-header">Tratando</div>
+                    <div class="stat-card-value">${stats.tratando ?? '0'}</div>
+                </div>
+                 <div class="stat-card">
+                    <div class="stat-card-header">Encerramento</div>
+                    <div class="stat-card-value">${stats.encerramento ?? '0'}</div>
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        console.error('Erro ao carregar estatísticas:', error);
+        statsBody.innerHTML = `<p class="error-message">Não foi possível carregar as estatísticas.</p>`;
+    }
+}
+
+function openStatsModal() {
+    elements.statsModalOverlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    loadStats(); // Carrega as estatísticas ao abrir o modal
+}
+
+function closeStatsModal() {
+    elements.statsModalOverlay.classList.remove('active');
+    document.body.style.overflow = '';
 }
 
 async function loadEventos(page = 1) {
@@ -229,6 +345,7 @@ async function loadEventos(page = 1) {
 
 function applyFilters() {
     loadEventos(1);
+    loadStats(); // Adicionado para atualizar as estatísticas
 }
 
 function renderEventos(eventos) {
@@ -314,6 +431,31 @@ function renderPagination({ total, pages, current_page }) {
 
 function createEventRow(evento) {
     const row = document.createElement('tr');
+    row.dataset.eventId = evento.id; // Adiciona um identificador à linha
+    const user = JSON.parse(localStorage.getItem('user'));
+    const isReadOnly = user ? user.is_readonly : false;
+
+    let actionButtons = '';
+    let commentBtnClass = 'btn-comment-inactive';
+    if (evento.has_unread_comments) {
+        commentBtnClass = 'btn-comment-unread';
+    } else if (evento.has_comments) {
+        commentBtnClass = 'btn-comment';
+    }
+
+    if (isReadOnly) {
+        actionButtons = `
+            <button class="btn ${commentBtnClass}" onclick="openCommentModal(${evento.id}, event)" title="Comentários"><i class="fas fa-comments"></i></button>
+        `;
+    } else {
+        actionButtons = `
+            <button class="btn btn-edit" onclick="editEvento(${evento.id}, event)" title="Editar"><i class="fas fa-edit"></i></button>
+            <button class="btn btn-danger" onclick="deleteEvento(${evento.id}, '${evento.oc}', event)" title="Excluir"><i class="fas fa-trash"></i></button>
+            <button class="btn ${commentBtnClass}" onclick="openCommentModal(${evento.id}, event)" title="Comentários"><i class="fas fa-comments"></i></button>
+            <button class="btn btn-send-email" onclick="sendManualEmail(${evento.id}, event)" title="Enviar E-mail"><i class="fas fa-paper-plane"></i></button>
+        `;
+    }
+
     row.innerHTML = `
         <td title="${evento.data}">${formatDateTime(evento.data)}</td>
         <td title="${evento.oc}"><strong>${evento.oc}</strong></td>
@@ -328,14 +470,7 @@ function createEventRow(evento) {
         <td title="${evento.afetacao || ''}">${evento.afetacao || '-'}</td>
         <td title="${evento.equipe_name || ''}">${evento.equipe_name || '-'}</td>
         <td title="${evento.rede || ''}">${evento.rede || '-'}</td>
-        <td>
-            <div class="table-actions">
-                <button class="btn btn-edit" onclick="editEvento(${evento.id}, event)" title="Editar"><i class="fas fa-edit"></i></button>
-                <button class="btn btn-danger" onclick="deleteEvento(${evento.id}, '${evento.oc}', event)" title="Excluir"><i class="fas fa-trash"></i></button>
-                <button class="btn ${evento.has_comments ? 'btn-comment' : 'btn-comment-inactive'}" onclick="openCommentModal(${evento.id}, event)" title="Comentários"><i class="fas fa-comments"></i></button>
-                <button class="btn btn-send-email" onclick="sendManualEmail(${evento.id}, event)" title="Enviar E-mail"><i class="fas fa-paper-plane"></i></button>
-            </div>
-        </td>
+        <td><div class="table-actions">${actionButtons}</div></td>
     `;
     return row;
 }
@@ -478,8 +613,10 @@ async function handleFormSubmit(e) {
 }
 
 async function editEvento(id, event) {
+    // Impede que o clique no botão cause ações indesejadas (como recarregar a página ou a tabela)
     event.stopPropagation();
-    updateViewState('loading');
+    event.preventDefault();
+
     try {
         const response = await fetchWithAuth(`${API_BASE_URL}/${id}`);
         if (!response.ok) throw new Error('Evento não encontrado para edição.');
@@ -487,8 +624,6 @@ async function editEvento(id, event) {
         openModal(evento);
     } catch (error) {
         showToast('Erro', error.message, 'error');
-    } finally {
-        updateViewState('data'); // Assume we go back to the data view
     }
 }
 
@@ -567,8 +702,14 @@ function toggleFilterCollapse() {
 
 function clearFilters() {
     elements.searchFilter.value = '';
-    const checkboxes = elements.statusCheckboxes.querySelectorAll('input[type="checkbox"]');
-    checkboxes.forEach(cb => cb.checked = true);
+    const statusCheckboxes = elements.statusCheckboxes.querySelectorAll('input[type="checkbox"]');
+    statusCheckboxes.forEach(cb => cb.checked = true);
+
+    if (elements.stateCheckboxesModal) {
+        const stateCheckboxes = elements.stateCheckboxesModal.querySelectorAll('input[type="checkbox"]');
+        stateCheckboxes.forEach(cb => cb.checked = false);
+    }
+
     elements.advancedFilterForm.reset();
     elements.btnHeaderBaixarExcel.classList.add('hidden');
     applyFilters();
@@ -615,6 +756,22 @@ function toggleStatusPopover(forceState) {
 function getSelectedStatuses() {
     const checkboxes = elements.statusCheckboxes.querySelectorAll('input[type="checkbox"]:checked');
     return Array.from(checkboxes).map(cb => cb.value);
+}
+
+function getSelectedStates() {
+    if (!elements.stateCheckboxesModal) return [];
+    const checkboxes = elements.stateCheckboxesModal.querySelectorAll('input[type="checkbox"]:checked');
+    return Array.from(checkboxes).map(cb => cb.value);
+}
+
+function openStateFilterModal() {
+    elements.stateFilterModalOverlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeStateFilterModal() {
+    elements.stateFilterModalOverlay.classList.remove('active');
+    document.body.style.overflow = '';
 }
 
 function updateStatusFilterButtonText() {
@@ -758,6 +915,20 @@ async function openCommentModal(eventoId, event) {
         if (!response.ok) throw new Error('Não foi possível carregar os comentários.');
         const comentarios = await response.json();
         renderComments(comentarios);
+
+        // Após carregar, marca como lido no backend
+        await fetchWithAuth(`/api/eventos/${eventoId}/comentarios/mark_read`, { method: 'POST' });
+
+        // Atualiza o botão na tabela para a cor normal (azul)
+        const tableRow = elements.eventsTableBody.querySelector(`tr[data-event-id="${eventoId}"]`);
+        if (tableRow) {
+            const commentButton = tableRow.querySelector('.btn-comment-unread');
+            if (commentButton) {
+                commentButton.classList.remove('btn-comment-unread');
+                commentButton.classList.add('btn-comment');
+            }
+        }
+
     } catch (error) {
         elements.commentHistory.innerHTML = `<p class="error-message">${error.message}</p>`;
         showToast('Erro', error.message, 'error');
@@ -823,6 +994,16 @@ async function handleCommentSubmit() {
             </div>
         `;
         elements.commentHistory.insertAdjacentHTML('afterbegin', commentItemHTML);
+
+        // Atualiza o botão de comentário na tabela para azul
+        const tableRow = elements.eventsTableBody.querySelector(`tr[data-event-id="${currentCommentingEventId}"]`);
+        if (tableRow) {
+            const commentButton = tableRow.querySelector('.btn-comment-inactive, .btn-comment');
+            if (commentButton) {
+                commentButton.classList.remove('btn-comment-inactive');
+                commentButton.classList.add('btn-comment');
+            }
+        }
 
         elements.commentForm.reset();
         showToast('Sucesso', 'Comentário adicionado!', 'success');

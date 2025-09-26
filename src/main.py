@@ -100,5 +100,7 @@ def setup_database(app_instance):
             print("Usuário padrão adicionado com sucesso!")
 
 if __name__ == '__main__':
-    setup_database(app)
+    # A função setup_database() deve ser executada apenas uma vez para configurar
+    # o banco de dados, não a cada inicialização do servidor.
+    # setup_database(app)
     app.run(host='0.0.0.0', port=5000, debug=True)

@@ -1,10 +1,12 @@
 from flask import Blueprint, request, jsonify, current_app
 from sqlalchemy.orm import joinedload
-from sqlalchemy import cast, Date
+from sqlalchemy import cast, Date, func, case
 from src.extensions import db, scheduler
 from src.models.evento import Evento
 from src.models.notification_setting import NotificationSetting
 from src.models.email_recipient import EmailRecipient
+from src.models.comentario import Comentario
+from src.models.comment_read_status import CommentReadStatus
 from src.auth import token_required
 from datetime import datetime
 from src.routes.utils import get_filtered_query
@@ -65,16 +67,23 @@ def handle_notification_logic(evento, previous_status=None, current_user=None):
 
     job_id = f'evento_{evento.id}'
 
-    # Se o status mudou para "Encerrado"
-    if evento.status == 'Encerrado' and previous_status != 'Encerrado':
+    # Se o status mudou para "Encerrado" ou "Cancelado", remove o job e envia notificação final (se não for cancelado)
+    if (evento.status == 'Encerrado' and previous_status != 'Encerrado') or \
+       (evento.status == 'Cancelado' and previous_status != 'Cancelado'):
         if scheduler.get_job(job_id):
             scheduler.remove_job(job_id)
-            print(f"Job {job_id} removido.")
+            print(f"Job {job_id} removido devido ao status {evento.status}.")
+
+        # Não enviar e-mail para status "Cancelado"
+        if evento.status == 'Cancelado':
+            return
 
         recipients = EmailRecipient.query.filter_by(city_id=evento.city_id).all()
         if recipients:
             to = [r.email for r in recipients]
-            subject = f"Atualização de Evento: {evento.oc} - {evento.status}"
+            cidade_nome = evento.city.name if evento.city else 'N/A'
+            ard_nome = evento.ard.name if evento.ard else 'N/A'
+            subject = f"Atualização de Evento: {evento.oc} - {ard_nome}/{cidade_nome} - Afetação: {evento.afetacao} - {evento.status}"
             summary = generate_email_summary(evento, previous_status)
             comments = evento.comentarios.order_by(db.desc('created_at')).all()
 
@@ -93,12 +102,16 @@ def handle_notification_logic(evento, previous_status=None, current_user=None):
         def email_job():
             with current_app.app_context():
                 current_evento = Evento.query.get(evento.id)
-                if not current_evento or current_evento.status == 'Encerrado':
+                # Se o evento foi deletado ou seu status é final (Encerrado, Cancelado), remove o job.
+                if not current_evento or current_evento.status in ['Encerrado', 'Cancelado']:
                     if scheduler.get_job(job_id):
                         scheduler.remove_job(job_id)
+                        print(f"Job {job_id} removido porque o evento foi encerrado, cancelado ou deletado.")
                     return
 
-                subject = f"Alerta de Evento Crítico: {current_evento.oc}"
+                cidade_nome = current_evento.city.name if current_evento.city else 'N/A'
+                ard_nome = current_evento.ard.name if current_evento.ard else 'N/A'
+                subject = f"Alerta Crítico: {current_evento.oc} - {ard_nome}/{cidade_nome} - Afetação: {current_evento.afetacao} - {current_evento.status}"
                 summary = generate_email_summary(current_evento, previous_status)
                 comments = current_evento.comentarios.order_by(db.desc('created_at')).all()
 
@@ -122,21 +135,88 @@ def get_eventos(current_user):
     per_page = request.args.get('per_page', 100, type=int)
 
     query = get_filtered_query(current_user)
-
     pagination = query.order_by(Evento.data.desc()).paginate(page=page, per_page=per_page, error_out=False)
 
     eventos = pagination.items
+    evento_ids = [e.id for e in eventos]
+
+    eventos_data = []
+    if evento_ids:
+        # Buscar a data do último comentário para cada evento
+        latest_comments = db.session.query(
+            Comentario.evento_id,
+            func.max(Comentario.created_at).label('last_comment_date')
+        ).filter(Comentario.evento_id.in_(evento_ids)).group_by(Comentario.evento_id).all()
+        latest_comments_map = {res.evento_id: res.last_comment_date for res in latest_comments}
+
+        # Buscar o último status de leitura do usuário para cada evento
+        read_statuses = db.session.query(
+            CommentReadStatus.evento_id,
+            CommentReadStatus.last_read_at
+        ).filter(
+            CommentReadStatus.evento_id.in_(evento_ids),
+            CommentReadStatus.user_id == current_user.id
+        ).all()
+        read_statuses_map = {res.evento_id: res.last_read_at for res in read_statuses}
+
+        # Montar o dicionário final com a flag de não lido
+        for evento in eventos:
+            evento_dict = evento.to_dict()
+            last_comment_date = latest_comments_map.get(evento.id)
+            last_read_date = read_statuses_map.get(evento.id)
+
+            has_unread = False
+            if last_comment_date:
+                if not last_read_date or last_comment_date > last_read_date:
+                    has_unread = True
+
+            evento_dict['has_unread_comments'] = has_unread
+            eventos_data.append(evento_dict)
 
     return jsonify({
-        'eventos': [evento.to_dict() for evento in eventos],
+        'eventos': eventos_data,
         'total': pagination.total,
         'pages': pagination.pages,
         'current_page': page
     })
 
+@evento_bp.route('/eventos/stats', methods=['GET'])
+@token_required
+def get_eventos_stats(current_user):
+    """
+    Endpoint para buscar estatísticas de contagem de eventos.
+    Respeita todos os filtros aplicados, exceto o de status.
+    """
+    try:
+        # Pega a query base com todos os filtros (exceto status) aplicados
+        base_query = get_filtered_query(current_user, apply_status_filter=False)
+
+        stats = {}
+
+        # Faz uma contagem separada para cada status para garantir a precisão
+        status_to_count = ['Pendente', 'Aberto', 'Tratando', 'Encerramento']
+        for status in status_to_count:
+            # .filter() cria uma nova query, não modifica a base_query
+            stats[status.lower()] = base_query.filter(Evento.status == status).count()
+
+        # Contagem especial para "Encerrado" no dia, usando a mesma lógica da tabela principal
+        encerrado_hoje_condition = db.and_(
+            Evento.status == 'Encerrado',
+            cast(Evento.data_encerramento.op('at time zone')('utc').op('at time zone')('America/Sao_Paulo'), Date) == cast(func.now().op('at time zone')('America/Sao_Paulo'), Date)
+        )
+        stats['encerrado_hoje'] = base_query.filter(encerrado_hoje_condition).count()
+
+        return jsonify(stats)
+    except Exception as e:
+        db.session.rollback()
+        print(f"Erro detalhado em get_eventos_stats: {e}")
+        return jsonify({'error': 'Erro ao calcular estatísticas.'}), 500
+
 @evento_bp.route('/eventos', methods=['POST'])
 @token_required
 def create_evento(current_user):
+    if current_user.is_readonly:
+        return jsonify({'error': 'Acesso negado: usuário somente leitura'}), 403
     try:
         data = request.get_json()
         
@@ -177,6 +257,8 @@ def create_evento(current_user):
 @evento_bp.route('/eventos/<int:evento_id>', methods=['PUT'])
 @token_required
 def update_evento(current_user, evento_id):
+    if current_user.is_readonly:
+        return jsonify({'error': 'Acesso negado: usuário somente leitura'}), 403
     try:
         evento = Evento.query.get_or_404(evento_id)
         data = request.get_json()
@@ -216,8 +298,17 @@ def update_evento(current_user, evento_id):
 @evento_bp.route('/eventos/<int:evento_id>', methods=['DELETE'])
 @token_required
 def delete_evento(current_user, evento_id):
+    if current_user.is_readonly:
+        return jsonify({'error': 'Acesso negado: usuário somente leitura'}), 403
     try:
         evento = Evento.query.get_or_404(evento_id)
+
+        # Remove o job agendado, se existir
+        job_id = f'evento_{evento_id}'
+        if scheduler.get_job(job_id):
+            scheduler.remove_job(job_id)
+            print(f"Job {job_id} removido ao deletar evento.")
+
         db.session.delete(evento)
         db.session.commit()
         
@@ -251,7 +342,9 @@ def send_manual_email(current_user, evento_id):
             return jsonify({'error': 'Nenhum destinatário de e-mail configurado para esta cidade.'}), 404
 
         to = [r.email for r in recipients]
-        subject = f"Alerta Manual de Evento: {evento.oc}"
+        cidade_nome = evento.city.name if evento.city else 'N/A'
+        ard_nome = evento.ard.name if evento.ard else 'N/A'
+        subject = f"Alerta Manual: {evento.oc} - {ard_nome}/{cidade_nome} - Afetação: {evento.afetacao} - {evento.status}"
 
         summary = generate_email_summary(evento, manual_send=True, current_user=current_user)
         comments = evento.comentarios.order_by(db.desc('created_at')).all()

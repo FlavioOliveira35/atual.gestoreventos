@@ -34,7 +34,8 @@ def create_user(current_user):
     user = User(
         username=data['username'],
         email=data['email'],
-        created_by_user=data.get('created_by_user')
+        created_by_user=data.get('created_by_user'),
+        is_readonly=data.get('is_readonly', False)
     )
     user.set_password(data['password'])
 
@@ -59,6 +60,10 @@ def update_user(current_user, user_id):
     data = request.json
     user.username = data.get('username', user.username)
     user.email = data.get('email', user.email)
+
+    # Explicitamente lida com o campo booleano 'is_readonly'
+    if 'is_readonly' in data:
+        user.is_readonly = data['is_readonly']
 
     if 'password' in data and data['password']:
         user.set_password(data['password'])
