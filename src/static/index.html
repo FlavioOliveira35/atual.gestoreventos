@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Eventos SC</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="login-container" class="login-container">
+        <div class="login-box">
+            <div class="logo">
+                <i class="fas fa-calendar-check"></i>
+                <h1>Gestor de Eventos SC</h1>
+            </div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email"><i class="fas fa-envelope"></i> Email</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password"><i class="fas fa-lock"></i> Senha</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+            </form>
+            <p id="login-error" class="error-message"></p>
+        </div>
+    </div>
+
+    <div id="main-container" class="container" style="display: none;">
+        <!-- Header 216.24.60.0/24-->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo-title">
+                    <div class="logo">
+                        <i class="fas fa-calendar-check"></i>
+                        <h1>Gestor de Eventos SC</h1>
+                    </div>
+                    <p id="userInfo" class="user-info"></p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-success hidden" id="btnHeaderBaixarExcel">
+                        <i class="fas fa-file-excel"></i>
+                        Exportar
+                    </button>
+                    <button class="btn btn-primary" id="btnNovo">
+                        <i class="fas fa-plus"></i>
+                        Novo Evento
+                    </button>
+                    <button class="btn btn-secondary" id="btnManage">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Filtros -->
+        <div class="filters-section">
+            <div class="filters-header" id="filters-toggle">
+                <i id="filter"></i> Filtros
+                <i class="fas fa-chevron-down toggle-icon"></i>
+            </div>
+            <div class="filters-container" id="filters-container">
+                <div class="filter-group">
+                    <label>
+                        <i class="fas fa-filter"></i>
+                        Status:
+                    </label>
+                    <div class="status-filter-container">
+                        <button id="statusFilterBtn" class="filter-select">
+                            <span>Selecionar Status</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div id="statusFilterPopover" class="popover">
+                            <div id="statusCheckboxes">
+                                <!-- Checkboxes serão gerados via JS -->
+                            </div>
+                            <div class="popover-actions">
+                                <button id="statusApplyBtn" class="btn btn-primary btn-sm">Aplicar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label for="searchFilter">
+                        <i class="fas fa-search"></i>
+                        Buscar:
+                    </label>
+                    <input type="text" id="searchFilter" class="filter-input" placeholder="Digite para buscar...">
+                </div>
+                <div class="filter-actions">
+                    <button class="btn btn-secondary" id="btnFiltroAvancado">
+                        <i class="fas fa-filter"></i>
+                        Filtros
+                    </button>
+                    <button class="btn btn-secondary" id="btnLimparFiltros">
+                        <i class="fas fa-times"></i>
+                        Limpar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabela -->
+        <div class="table-section">
+            <div class="table-container">
+                <table class="events-table" id="eventsTable">
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-calendar-alt"></i> Data e Horário</th>
+                            <th><i class="fas fa-hashtag"></i> OC</th>
+                            <th><i class="fas fa-info-circle"></i> Status</th>
+                            <th><i class="fas fa-city"></i> Cidade</th>
+                            <th><i class="fas fa-archive"></i> ARD</th>
+                            <th><i class="fas fa-cog"></i> SP</th>
+                            <th><i class="fas fa-box"></i> Caixa</th>
+                            <th><i class="fas fa-sitemap"></i> PON</th>
+                            <th><i class="fas fa-user-tag"></i> Solicitante</th>
+                            <th><i class="fas fa-tasks"></i> TA</th>
+                            <th><i class="fas fa-exclamation-triangle"></i> Afetação</th>
+                            <th><i class="fas fa-users-cog"></i> Equipe</th>
+                            <th><i class="fas fa-network-wired"></i> Rede</th>
+                            <th><i class="fas fa-tools"></i> Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="eventsTableBody">
+                        <!-- Dados serão carregados via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Paginação -->
+        <div id="pagination-container" class="pagination-container"></div>
+
+        <!-- Loading -->
+        <div class="loading" id="loading">
+            <div class="loading-spinner">
+                <i class="fas fa-spinner fa-spin"></i>
+                <span>Carregando...</span>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state" id="emptyState" style="display: none;">
+            <div class="empty-content">
+                <i class="fas fa-inbox"></i>
+                <h3>Nenhum evento encontrado</h3>
+                <p>Não há eventos cadastrados ou que correspondam aos filtros aplicados.</p>
+                <button class="btn btn-primary" onclick="document.getElementById('btnNovo').click()">
+                    <i class="fas fa-plus"></i>
+                    Cadastrar Primeiro Evento
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modalTitle">
+                    <i class="fas fa-plus-circle"></i>
+                    Novo Evento
+                </h2>
+                <button class="modal-close" id="modalClose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="eventoForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="data">
+                                <i class="fas fa-calendar"></i>
+                                Data e Horário *
+                            </label>
+                            <input type="datetime-local" id="data" name="data" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="oc">
+                                <i class="fas fa-hashtag"></i>
+                                OC *
+                            </label>
+                            <input type="text" id="oc" name="oc" required placeholder="Ex: ORD-001">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="status">
+                                <i class="fas fa-info-circle"></i>
+                                Status *
+                            </label>
+                            <select id="status" name="status" required>
+                                <option value="Aberto">Aberto</option>
+                                <option value="Pendente">Pendente</option>
+                                <option value="Preventiva">Preventiva</option>
+                                <option value="Tratando">Tratando</option>
+                                <option value="Encerramento">Encerramento</option>
+                                <option value="Encerrado">Encerrado</option>
+                                <option value="Cancelado">Cancelado</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="data_encerramento">
+                                <i class="fas fa-calendar-check"></i>
+                                Data de Encerramento
+                            </label>
+                            <input type="datetime-local" id="data_encerramento" name="data_encerramento" disabled>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="city_id">
+                                <i class="fas fa-city"></i>
+                                Cidade
+                            </label>
+                            <select id="city_id" name="city_id">
+                                <!-- Cidades serão carregadas via JS -->
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="pon">
+                                <i class="fas fa-sitemap"></i>
+                                PON
+                            </label>
+                            <input type="text" id="pon" name="pon" placeholder="Dados PON">
+                        </div>
+                        <div class="form-group">
+                            <label for="ospregional">
+                                <i class="fas fa-map-marked-alt"></i>
+                                OSP Regional
+                            </label>
+                            <input type="text" id="ospregional" name="ospregional" placeholder="Dados OSP Regional">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="solicitante_id">
+                                <i class="fas fa-user-tag"></i>
+                                Solicitante *
+                            </label>
+                            <select id="solicitante_id" name="solicitante_id" required>
+                                <!-- Solicitantes carregados via JS -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="equipe_id">
+                                <i class="fas fa-users-cog"></i>
+                                Equipe
+                            </label>
+                            <select id="equipe_id" name="equipe_id">
+                                <!-- Equipes carregadas via JS -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="ard_id">
+                                <i class="fas fa-archive"></i>
+                                ARD
+                            </label>
+                            <select id="ard_id" name="ard_id">
+                                <option value="">Selecione uma cidade primeiro</option>
+                                <!-- ARDs carregados via JS -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="sp">
+                                <i class="fas fa-cog"></i>
+                                SP
+                            </label>
+                            <input type="text" id="sp" name="sp" placeholder="Código SP">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="caixa">
+                                <i class="fas fa-box"></i>
+                                Caixa
+                            </label>
+                            <input type="text" id="caixa" name="caixa" placeholder="Número da caixa">
+                        </div>
+                        <div class="form-group">
+                            <label for="ta">
+                                <i class="fas fa-tasks"></i>
+                                TA
+                            </label>
+                            <input type="text" id="ta" name="ta" placeholder="Código TA">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                         <div class="form-group">
+                            <label for="afetacao">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                Afetação
+                            </label>
+                            <input type="text" id="afetacao" name="afetacao" placeholder="Afetação">
+                        </div>
+                         <div class="form-group">
+                            <label for="rede">
+                                <i class="fas fa-network-wired"></i>
+                                Rede
+                            </label>
+                            <select id="rede" name="rede">
+                                <option value="">Selecione a Rede</option>
+                                <option value="Gpon">Gpon</option>
+                                <option value="Met.">Met.</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="btnCancelar">
+                    <i class="fas fa-times"></i>
+                    Cancelar
+                </button>
+                <button type="submit" form="eventoForm" class="btn btn-primary" id="btnSalvar">
+                    <i class="fas fa-save"></i>
+                    Salvar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Advanced Filter Modal -->
+    <div class="modal-overlay" id="advancedFilterModalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-filter"></i> Filtros Avançados</h2>
+                <button class="modal-close" id="advancedFilterModalClose"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="advancedFilterForm">
+                    <fieldset>
+                        <legend>Período de Abertura</legend>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="data_inicio"><i class="fas fa-calendar-day"></i> De</label>
+                                <input type="date" id="data_inicio" name="data_inicio">
+                            </div>
+                            <div class="form-group">
+                                <label for="data_fim"><i class="fas fa-calendar-day"></i> Até</label>
+                                <input type="date" id="data_fim" name="data_fim">
+                            </div>
+                        </div>
+                    </fieldset>
+                    <fieldset>
+                        <legend>Período de Encerramento</legend>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="data_encerramento_inicio"><i class="fas fa-calendar-check"></i> De</label>
+                                <input type="date" id="data_encerramento_inicio" name="data_encerramento_inicio">
+                            </div>
+                            <div class="form-group">
+                                <label for="data_encerramento_fim"><i class="fas fa-calendar-check"></i> Até</label>
+                                <input type="date" id="data_encerramento_fim" name="data_encerramento_fim">
+                            </div>
+                        </div>
+                    </fieldset>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="btnLimparFiltroAvancado">
+                    <i class="fas fa-eraser"></i> Limpar Filtros
+                </button>
+                <button type="button" class="btn btn-primary" id="btnAplicarFiltroAvancado">
+                    <i class="fas fa-check"></i> Aplicar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Management Modal -->
+    <div class="modal-overlay" id="manageModalOverlay">
+        <div class="modal large">
+            <div class="modal-header">
+                <h2><i class="fas fa-users-cog"></i> Gerenciamento</h2>
+                <button class="modal-close" id="manageModalClose"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="tabs">
+                    <button class="tab-link active" data-tab="usersTab"><i class="fas fa-users"></i> Usuários</button>
+                    <button class="tab-link" data-tab="citiesTab"><i class="fas fa-city"></i> Cidades</button>
+                    <button class="tab-link" data-tab="ardsTab"><i class="fas fa-archive"></i> ARDs</button>
+                    <button class="tab-link" data-tab="solicitantesTab"><i class="fas fa-user-tag"></i> Solicitantes</button>
+                    <button class="tab-link" data-tab="equipesTab"><i class="fas fa-users-cog"></i> Equipes</button>
+                    <button class="tab-link" data-tab="notificationsTab"><i class="fas fa-bell"></i> Notificações</button>
+                </div>
+
+                <!-- Notifications Tab -->
+                <div id="notificationsTab" class="tab-content">
+                    <div class="tab-header">
+                        <h3>Gerenciar Notificações</h3>
+                    </div>
+                    <div class="form-group">
+                        <label for="afetacaoThreshold"><i class="fas fa-exclamation-triangle"></i> Limiar de Afetação para Alerta</label>
+                        <input type="number" id="afetacaoThreshold" class="filter-input" placeholder="Ex: 300">
+                        <button class="btn btn-primary" id="btnSaveThreshold"><i class="fas fa-save"></i> Salvar</button>
+                    </div>
+                    <hr>
+                    <h4>E-mails por Cidade</h4>
+                    <div class="form-group">
+                        <label for="notificationCitySelect"><i class="fas fa-city"></i> Selecione uma Cidade</label>
+                        <select id="notificationCitySelect" class="filter-select">
+                            <!-- Cidades carregadas via JS -->
+                        </select>
+                    </div>
+                    <div id="email-management-section" style="display: none;">
+                        <form id="addEmailForm" class="inline-form">
+                            <input type="email" id="newEmailAddress" placeholder="email@example.com" required>
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Adicionar E-mail</button>
+                        </form>
+                        <div class="table-container">
+                            <table class="events-table">
+                                <thead>
+                                    <tr>
+                                        <th><i class="fas fa-envelope"></i> E-mail</th>
+                                        <th><i class="fas fa-tools"></i> Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="emailRecipientsTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Users Tab -->
+                <div id="usersTab" class="tab-content active">
+                    <div class="tab-header">
+                        <h3>Gerenciar Usuários</h3>
+                        <button class="btn btn-primary" id="btnAddUser"><i class="fas fa-user-plus"></i> Adicionar Usuário</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="events-table">
+                            <thead>
+                                <tr>
+                                    <th><i class="fas fa-user"></i> Username</th>
+                                    <th><i class="fas fa-envelope"></i> Email</th>
+                                    <th><i class="fas fa-city"></i> Cidade</th>
+                                    <th><i class="fas fa-tools"></i> Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Cities Tab -->
+                <div id="citiesTab" class="tab-content">
+                    <div class="tab-header">
+                        <h3>Gerenciar Cidades</h3>
+                        <form id="addCityForm" class="inline-form">
+                            <input type="text" id="newCityName" placeholder="Nome da nova cidade" required>
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Adicionar</button>
+                        </form>
+                    </div>
+                    <div class="table-container">
+                        <table class="events-table">
+                            <thead>
+                                <tr>
+                                    <th><i class="fas fa-city"></i> Nome da Cidade</th>
+                                    <th><i class="fas fa-tools"></i> Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="citiesTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ARDs Tab -->
+                <div id="ardsTab" class="tab-content">
+                    <div class="tab-header">
+                        <h3>Gerenciar ARDs</h3>
+                        <form id="addArdForm" class="inline-form">
+                            <input type="text" id="newArdName" placeholder="Nome do novo ARD" required>
+                            <select id="newArdCityId" required>
+                                <!-- Cidades carregadas via JS -->
+                            </select>
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Adicionar</button>
+                        </form>
+                    </div>
+                    <div class="table-container">
+                        <table class="events-table">
+                            <thead>
+                                <tr>
+                                    <th><i class="fas fa-archive"></i> Nome do ARD</th>
+                                    <th><i class="fas fa-city"></i> Cidade</th>
+                                    <th><i class="fas fa-tools"></i> Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ardsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Solicitantes Tab -->
+                <div id="solicitantesTab" class="tab-content">
+                    <div class="tab-header">
+                        <h3>Gerenciar Solicitantes</h3>
+                        <form id="addSolicitanteForm" class="inline-form">
+                            <input type="text" id="newSolicitanteName" placeholder="Nome do novo solicitante" required>
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Adicionar</button>
+                        </form>
+                    </div>
+                    <div class="table-container">
+                        <table class="events-table">
+                            <thead>
+                                <tr>
+                                    <th><i class="fas fa-user-tag"></i> Nome do Solicitante</th>
+                                    <th><i class="fas fa-tools"></i> Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="solicitantesTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Equipes Tab -->
+                <div id="equipesTab" class="tab-content">
+                    <div class="tab-header">
+                        <h3>Gerenciar Equipes</h3>
+                        <form id="addEquipeForm" class="inline-form">
+                            <input type="text" id="newEquipeName" placeholder="Nome da nova equipe" required>
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Adicionar</button>
+                        </form>
+                    </div>
+                    <div class="table-container">
+                        <table class="events-table">
+                            <thead>
+                                <tr>
+                                    <th><i class="fas fa-users-cog"></i> Nome da Equipe</th>
+                                    <th><i class="fas fa-tools"></i> Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="equipesTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Form Modal -->
+    <div class="modal-overlay" id="userModalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="userModalTitle"><i class="fas fa-user-plus"></i> Adicionar Usuário</h2>
+                <button class="modal-close" id="userModalClose"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="userForm">
+                    <input type="hidden" id="userId" name="userId">
+                    <div class="form-group">
+                        <label for="username"><i class="fas fa-user"></i> Username *</label>
+                        <input type="text" id="username" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="userEmail"><i class="fas fa-envelope"></i> Email *</label>
+                        <input type="email" id="userEmail" name="userEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="userPassword"><i class="fas fa-lock"></i> Senha</label>
+                        <input type="password" id="userPassword" name="userPassword">
+                        <small>Deixe em branco para não alterar</small>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-city"></i> Cidades Permitidas</label>
+                        <div id="userCityCheckboxes" class="checkbox-container"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="btnCancelUser">Cancelar</button>
+                <button type="submit" form="userForm" class="btn btn-primary" id="btnSaveUser">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="login.js"></script>
+    <script src="script.js"></script>
+    <script src="management.js"></script>
+
+    <!-- Comment Modal -->
+    <div class="modal-overlay" id="commentModalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="commentModalTitle"><i class="fas fa-comments"></i> Comentários</h2>
+                <button class="modal-close" id="commentModalClose"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="comment-history" id="commentHistory">
+                    <!-- Comment history will be loaded here -->
+                </div>
+                <form id="commentForm">
+                    <div class="form-group">
+                        <label for="newCommentText">Novo Comentário</label>
+                        <textarea id="newCommentText" name="text" rows="3" required placeholder="Digite seu comentário..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Enviar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alerta de Evento</title>
+</head>
+<body style="font-family: Arial, sans-serif; margin: 0; padding: 20px; color: #333;">
+
+    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: auto; border: 1px solid #ddd;">
+        <!-- Header -->
+        <tr>
+            <td style="background-color: #4A5568; padding: 20px; color: white; text-align: center;">
+                <h1 style="margin: 0; font-size: 24px;">
+                    &#9888;&#65039; Alerta de Evento Crítico
+                </h1>
+            </td>
+        </tr>
+
+        <!-- Human-like Summary -->
+        <tr>
+            <td style="padding: 20px;">
+                <p style="font-size: 16px; line-height: 1.5;">
+                    {{ summary_text | safe }}
+                </p>
+            </td>
+        </tr>
+
+        <!-- Details Table -->
+        <tr>
+            <td style="padding: 0 20px;">
+                <h2 style="font-size: 20px; color: #4A5568;">Detalhes do Evento</h2>
+                <table width="100%" border="0" cellspacing="0" cellpadding="10" style="border: 1px solid #ddd;">
+                    <tr style="background-color: #EDF2F7;">
+                        <th colspan="2" style="text-align: left; padding: 10px;">{{ evento.oc }}</th>
+                    </tr>
+                    <tr>
+                        <td style="width: 30%; background-color: #F7FAFC;"><strong>Status</strong></td>
+                        <td>{{ evento.status }}</td>
+                    </tr>
+                    <tr>
+                        <td style="background-color: #F7FAFC;"><strong>Afetação</strong></td>
+                        <td>{{ evento.afetacao }}</td>
+                    </tr>
+                    <tr>
+                        <td style="background-color: #F7FAFC;"><strong>Data de Abertura</strong></td>
+                        <td>{{ evento.data }}</td>
+                    </tr>
+                    <tr>
+                        <td style="background-color: #F7FAFC;"><strong>Cidade</strong></td>
+                        <td>{{ evento.city.name if evento.city else 'N/A' }}</td>
+                    </tr>
+                    <tr>
+                        <td style="background-color: #F7FAFC;"><strong>ARD</strong></td>
+                        <td>{{ evento.ard.name if evento.ard else 'N/A' }}</td>
+                    </tr>
+                    <tr>
+                        <td style="background-color: #F7FAFC;"><strong>Solicitante</strong></td>
+                        <td>{{ evento.solicitante.name if evento.solicitante else 'N/A' }}</td>
+                    </tr>
+                     <tr>
+                        <td style="background-color: #F7FAFC;"><strong>Equipe</strong></td>
+                        <td>{{ evento.equipe.name if evento.equipe else 'N/A' }}</td>
+                    </tr>
+                    <tr>
+                        <td style="background-color: #F7FAFC;"><strong>Rede</strong></td>
+                        <td>{{ evento.rede }}</td>
+                    </tr>
+                     <tr>
+                        <td style="background-color: #F7FAFC;"><strong>SP</strong></td>
+                        <td>{{ evento.sp }}</td>
+                    </tr>
+                     <tr>
+                        <td style="background-color: #F7FAFC;"><strong>Caixa</strong></td>
+                        <td>{{ evento.caixa }}</td>
+                    </tr>
+                     <tr>
+                        <td style="background-color: #F7FAFC;"><strong>PON</strong></td>
+                        <td>{{ evento.pon }}</td>
+                    </tr>
+                     <tr>
+                        <td style="background-color: #F7FAFC;"><strong>TA</strong></td>
+                        <td>{{ evento.ta }}</td>
+                    </tr>
+                    {% if evento.data_encerramento %}
+                    <tr>
+                        <td style="background-color: #F7FAFC;"><strong>Data de Encerramento</strong></td>
+                        <td>{{ evento.data_encerramento.strftime('%d/%m/%Y às %H:%M') }}</td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </td>
+        </tr>
+
+        <!-- Comments Section -->
+        {% if comments %}
+        <tr>
+            <td style="padding: 20px;">
+                <h2 style="font-size: 20px; color: #4A5568;">Histórico de Comentários</h2>
+                <div style="border: 1px solid #ddd; padding: 15px; background-color: #F7FAFC; border-radius: 5px;">
+                    {% for comment in comments %}
+                    <div style="border-bottom: 1px solid #E2E8F0; padding-bottom: 10px; margin-bottom: 10px;">
+                        <p style="margin: 0; font-size: 14px;">
+                            <strong>{{ comment.user_name }}</strong> em
+                            <span style="color: #718096;">{{ comment.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+                        </p>
+                        <p style="margin: 5px 0 0; font-size: 15px; white-space: pre-wrap;">{{ comment.text | safe }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </td>
+        </tr>
+        {% endif %}
+
+        <!-- Footer -->
+        <tr>
+            <td style="background-color: #f7fafc; padding: 15px; text-align: center; color: #718096; font-size: 12px;">
+                <p style="margin: 0;">Este é um e-mail automático enviado pelo Gestor de Eventos SC.</p>
+            </td>
+        </tr>
+    </table>
+
+</body>
+</html>
