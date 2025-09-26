@@ -5,6 +5,8 @@ from src.extensions import db, scheduler
 from src.models.evento import Evento
 from src.models.notification_setting import NotificationSetting
 from src.models.email_recipient import EmailRecipient
+from src.models.comentario import Comentario
+from src.models.comment_read_status import CommentReadStatus
 from src.auth import token_required
 from datetime import datetime
 from src.routes.utils import get_filtered_query
@@ -133,13 +135,46 @@ def get_eventos(current_user):
     per_page = request.args.get('per_page', 100, type=int)
 
     query = get_filtered_query(current_user)
-
     pagination = query.order_by(Evento.data.desc()).paginate(page=page, per_page=per_page, error_out=False)
 
     eventos = pagination.items
+    evento_ids = [e.id for e in eventos]
+
+    eventos_data = []
+    if evento_ids:
+        # Buscar a data do último comentário para cada evento
+        latest_comments = db.session.query(
+            Comentario.evento_id,
+            func.max(Comentario.created_at).label('last_comment_date')
+        ).filter(Comentario.evento_id.in_(evento_ids)).group_by(Comentario.evento_id).all()
+        latest_comments_map = {res.evento_id: res.last_comment_date for res in latest_comments}
+
+        # Buscar o último status de leitura do usuário para cada evento
+        read_statuses = db.session.query(
+            CommentReadStatus.evento_id,
+            CommentReadStatus.last_read_at
+        ).filter(
+            CommentReadStatus.evento_id.in_(evento_ids),
+            CommentReadStatus.user_id == current_user.id
+        ).all()
+        read_statuses_map = {res.evento_id: res.last_read_at for res in read_statuses}
+
+        # Montar o dicionário final com a flag de não lido
+        for evento in eventos:
+            evento_dict = evento.to_dict()
+            last_comment_date = latest_comments_map.get(evento.id)
+            last_read_date = read_statuses_map.get(evento.id)
+
+            has_unread = False
+            if last_comment_date:
+                if not last_read_date or last_comment_date > last_read_date:
+                    has_unread = True
+
+            evento_dict['has_unread_comments'] = has_unread
+            eventos_data.append(evento_dict)
 
     return jsonify({
-        'eventos': [evento.to_dict() for evento in eventos],
+        'eventos': eventos_data,
         'total': pagination.total,
         'pages': pagination.pages,
         'current_page': page

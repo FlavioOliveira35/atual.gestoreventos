@@ -205,6 +205,8 @@ function initializeApp() {
 function displayUserInfo() {
     const userInfo = document.getElementById('userInfo');
     const user = JSON.parse(localStorage.getItem('user'));
+    const btnManage = document.getElementById('btnManage');
+
     if (user && user.username) {
         userInfo.innerHTML = `Usuário: <strong>${user.username}</strong>`;
 
@@ -214,9 +216,18 @@ function displayUserInfo() {
         } else {
             elements.btnNovo.style.display = 'inline-block';
         }
+
+        // Mostra/oculta o botão de Gerenciamento apenas para o admin
+        if (btnManage && user.email === 'flavio.coliveira@telefonica.com') {
+            btnManage.style.display = 'inline-block';
+        } else if (btnManage) {
+            btnManage.style.display = 'none';
+        }
+
     } else {
         userInfo.style.display = 'none';
-        elements.btnNovo.style.display = 'none'; // Oculta se não houver usuário
+        elements.btnNovo.style.display = 'none';
+        if (btnManage) btnManage.style.display = 'none';
     }
 }
 
@@ -420,19 +431,27 @@ function renderPagination({ total, pages, current_page }) {
 
 function createEventRow(evento) {
     const row = document.createElement('tr');
+    row.dataset.eventId = evento.id; // Adiciona um identificador à linha
     const user = JSON.parse(localStorage.getItem('user'));
     const isReadOnly = user ? user.is_readonly : false;
 
     let actionButtons = '';
+    let commentBtnClass = 'btn-comment-inactive';
+    if (evento.has_unread_comments) {
+        commentBtnClass = 'btn-comment-unread';
+    } else if (evento.has_comments) {
+        commentBtnClass = 'btn-comment';
+    }
+
     if (isReadOnly) {
         actionButtons = `
-            <button class="btn ${evento.has_comments ? 'btn-comment' : 'btn-comment-inactive'}" onclick="openCommentModal(${evento.id}, event)" title="Comentários"><i class="fas fa-comments"></i></button>
+            <button class="btn ${commentBtnClass}" onclick="openCommentModal(${evento.id}, event)" title="Comentários"><i class="fas fa-comments"></i></button>
         `;
     } else {
         actionButtons = `
             <button class="btn btn-edit" onclick="editEvento(${evento.id}, event)" title="Editar"><i class="fas fa-edit"></i></button>
             <button class="btn btn-danger" onclick="deleteEvento(${evento.id}, '${evento.oc}', event)" title="Excluir"><i class="fas fa-trash"></i></button>
-            <button class="btn ${evento.has_comments ? 'btn-comment' : 'btn-comment-inactive'}" onclick="openCommentModal(${evento.id}, event)" title="Comentários"><i class="fas fa-comments"></i></button>
+            <button class="btn ${commentBtnClass}" onclick="openCommentModal(${evento.id}, event)" title="Comentários"><i class="fas fa-comments"></i></button>
             <button class="btn btn-send-email" onclick="sendManualEmail(${evento.id}, event)" title="Enviar E-mail"><i class="fas fa-paper-plane"></i></button>
         `;
     }
@@ -896,6 +915,20 @@ async function openCommentModal(eventoId, event) {
         if (!response.ok) throw new Error('Não foi possível carregar os comentários.');
         const comentarios = await response.json();
         renderComments(comentarios);
+
+        // Após carregar, marca como lido no backend
+        await fetchWithAuth(`/api/eventos/${eventoId}/comentarios/mark_read`, { method: 'POST' });
+
+        // Atualiza o botão na tabela para a cor normal (azul)
+        const tableRow = elements.eventsTableBody.querySelector(`tr[data-event-id="${eventoId}"]`);
+        if (tableRow) {
+            const commentButton = tableRow.querySelector('.btn-comment-unread');
+            if (commentButton) {
+                commentButton.classList.remove('btn-comment-unread');
+                commentButton.classList.add('btn-comment');
+            }
+        }
+
     } catch (error) {
         elements.commentHistory.innerHTML = `<p class="error-message">${error.message}</p>`;
         showToast('Erro', error.message, 'error');
@@ -961,6 +994,16 @@ async function handleCommentSubmit() {
             </div>
         `;
         elements.commentHistory.insertAdjacentHTML('afterbegin', commentItemHTML);
+
+        // Atualiza o botão de comentário na tabela para azul
+        const tableRow = elements.eventsTableBody.querySelector(`tr[data-event-id="${currentCommentingEventId}"]`);
+        if (tableRow) {
+            const commentButton = tableRow.querySelector('.btn-comment-inactive, .btn-comment');
+            if (commentButton) {
+                commentButton.classList.remove('btn-comment-inactive');
+                commentButton.classList.add('btn-comment');
+            }
+        }
 
         elements.commentForm.reset();
         showToast('Sucesso', 'Comentário adicionado!', 'success');
