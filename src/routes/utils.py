@@ -1,5 +1,5 @@
 from flask import request
-from sqlalchemy import cast, Date
+from sqlalchemy import cast, Date, func
 from sqlalchemy.orm import joinedload
 from src.models import db
 from src.models.evento import Evento
@@ -61,17 +61,17 @@ def get_filtered_query(current_user):
 
     if statuses:
         if apply_special_encerrado_filter:
-            today = datetime.utcnow().date()
             other_statuses = [s for s in statuses if s != 'Encerrado']
 
             conditions = []
             if other_statuses:
                 conditions.append(Evento.status.in_(other_statuses))
 
+            # Usar func.current_date() para obter a data atual do banco de dados
             conditions.append(
                 db.and_(
                     Evento.status == 'Encerrado',
-                    cast(Evento.data_encerramento, Date) == today
+                    cast(Evento.data_encerramento, Date) == func.current_date()
                 )
             )
             query = query.filter(db.or_(*conditions))
