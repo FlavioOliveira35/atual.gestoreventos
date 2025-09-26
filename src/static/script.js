@@ -53,6 +53,12 @@ function initializeDOMElements() {
         statsModalClose: document.getElementById('statsModalClose'),
         statsModalBody: document.getElementById('statsModalBody'),
         statsModalCloseBtn: document.getElementById('statsModalCloseBtn'),
+        btnStateFilter: document.getElementById('btnStateFilter'),
+        stateFilterModalOverlay: document.getElementById('stateFilterModalOverlay'),
+        stateFilterModalClose: document.getElementById('stateFilterModalClose'),
+        stateCheckboxesModal: document.getElementById('stateCheckboxesModal'),
+        btnAplicarFiltroEstado: document.getElementById('btnAplicarFiltroEstado'),
+        btnLimparFiltroEstado: document.getElementById('btnLimparFiltroEstado'),
     };
 }
 
@@ -106,13 +112,6 @@ function setupEventListeners() {
     });
     elements.searchFilter.addEventListener('input', debounce(applyFilters, 300));
 
-    // Adiciona event listeners para os checkboxes de estado
-    if (elements.stateCheckboxes) {
-        elements.stateCheckboxes.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-            cb.addEventListener('change', () => applyFilters());
-        });
-    }
-
     document.addEventListener('click', (e) => {
         if (elements.statusFilterPopover && !elements.statusFilterPopover.contains(e.target) && !elements.statusFilterBtn.contains(e.target)) {
             toggleStatusPopover(false);
@@ -131,6 +130,22 @@ function setupEventListeners() {
     elements.statsModalCloseBtn.addEventListener('click', closeStatsModal);
     elements.statsModalOverlay.addEventListener('click', (e) => {
         if (e.target === elements.statsModalOverlay) closeStatsModal();
+    });
+
+    // Event Listeners para o Modal de Filtro de Estado
+    elements.btnStateFilter.addEventListener('click', openStateFilterModal);
+    elements.stateFilterModalClose.addEventListener('click', closeStateFilterModal);
+    elements.stateFilterModalOverlay.addEventListener('click', (e) => {
+        if (e.target === elements.stateFilterModalOverlay) closeStateFilterModal();
+    });
+    elements.btnAplicarFiltroEstado.addEventListener('click', () => {
+        applyFilters();
+        closeStateFilterModal();
+    });
+    elements.btnLimparFiltroEstado.addEventListener('click', () => {
+        elements.stateCheckboxesModal.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+        applyFilters();
+        closeStateFilterModal();
     });
 
     elements.btnAplicarFiltroAvancado.addEventListener('click', () => {
@@ -671,9 +686,9 @@ function clearFilters() {
     const statusCheckboxes = elements.statusCheckboxes.querySelectorAll('input[type="checkbox"]');
     statusCheckboxes.forEach(cb => cb.checked = true);
 
-    if (elements.stateCheckboxes) {
-        const stateCheckboxes = elements.stateCheckboxes.querySelectorAll('input[type="checkbox"]');
-        stateCheckboxes.forEach(cb => cb.checked = false); // Desmarcar os estados
+    if (elements.stateCheckboxesModal) {
+        const stateCheckboxes = elements.stateCheckboxesModal.querySelectorAll('input[type="checkbox"]');
+        stateCheckboxes.forEach(cb => cb.checked = false);
     }
 
     elements.advancedFilterForm.reset();
@@ -725,9 +740,19 @@ function getSelectedStatuses() {
 }
 
 function getSelectedStates() {
-    if (!elements.stateCheckboxes) return [];
-    const checkboxes = elements.stateCheckboxes.querySelectorAll('input[type="checkbox"]:checked');
+    if (!elements.stateCheckboxesModal) return [];
+    const checkboxes = elements.stateCheckboxesModal.querySelectorAll('input[type="checkbox"]:checked');
     return Array.from(checkboxes).map(cb => cb.value);
+}
+
+function openStateFilterModal() {
+    elements.stateFilterModalOverlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeStateFilterModal() {
+    elements.stateFilterModalOverlay.classList.remove('active');
+    document.body.style.overflow = '';
 }
 
 function updateStatusFilterButtonText() {

@@ -77,8 +77,5 @@ class Evento(db.Model):
             'updated_by': self.updater.username if self.updater else None,
 
             'data_encerramento': f"{self.data_encerramento.isoformat()}Z" if self.data_encerramento else None,
-            'has_comments': self.has_comments,
-
-            # Campos de depuração temporários
-            'debug_closure_date_raw': str(self.data_encerramento) if self.data_encerramento else None
+            'has_comments': self.has_comments
         }

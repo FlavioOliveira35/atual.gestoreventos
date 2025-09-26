@@ -153,33 +153,23 @@ def get_eventos_stats(current_user):
     Respeita todos os filtros aplicados, exceto o de status.
     """
     try:
+        # Pega a query base com todos os filtros (exceto status) aplicados
         base_query = get_filtered_query(current_user, apply_status_filter=False)
 
-        encerrado_hoje_case = case(
-            (
-                db.and_(
-                    Evento.status == 'Encerrado',
-                    cast(Evento.data_encerramento.op('at time zone')('utc').op('at time zone')('America/Sao_Paulo'), Date) == cast(func.now().op('at time zone')('America/Sao_Paulo'), Date)
-                ), 1
-            ),
-            else_=0
+        stats = {}
+
+        # Faz uma contagem separada para cada status para garantir a precisão
+        status_to_count = ['Pendente', 'Aberto', 'Tratando', 'Encerramento']
+        for status in status_to_count:
+            # .filter() cria uma nova query, não modifica a base_query
+            stats[status.lower()] = base_query.filter(Evento.status == status).count()
+
+        # Contagem especial para "Encerrado" no dia, usando a mesma lógica da tabela principal
+        encerrado_hoje_condition = db.and_(
+            Evento.status == 'Encerrado',
+            cast(Evento.data_encerramento.op('at time zone')('utc').op('at time zone')('America/Sao_Paulo'), Date) == cast(func.now().op('at time zone')('America/Sao_Paulo'), Date)
         )
-
-        results = db.session.query(
-            func.count(case((Evento.status == 'Pendente', 1))).label('pendente'),
-            func.count(case((Evento.status == 'Aberto', 1))).label('aberto'),
-            func.count(case((Evento.status == 'Tratando', 1))).label('tratando'),
-            func.count(case((Evento.status == 'Encerramento', 1))).label('encerramento'),
-            func.sum(encerrado_hoje_case).label('encerrado_hoje')
-        ).select_from(base_query.subquery()).one()
-
-        stats = {
-            'pendente': results.pendente,
-            'aberto': results.aberto,
-            'tratando': results.tratando,
-            'encerramento': results.encerramento,
-            'encerrado_hoje': results.encerrado_hoje or 0
-        }
+        stats['encerrado_hoje'] = base_query.filter(encerrado_hoje_condition).count()
 
         return jsonify(stats)
     except Exception as e:
@@ -190,6 +180,8 @@ def get_eventos_stats(current_user):
 @evento_bp.route('/eventos', methods=['POST'])
 @token_required
 def create_evento(current_user):
+    if current_user.is_readonly:
+        return jsonify({'error': 'Acesso negado: usuário somente leitura'}), 403
     try:
         data = request.get_json()
         
@@ -230,6 +222,8 @@ def create_evento(current_user):
 @evento_bp.route('/eventos/<int:evento_id>', methods=['PUT'])
 @token_required
 def update_evento(current_user, evento_id):
+    if current_user.is_readonly:
+        return jsonify({'error': 'Acesso negado: usuário somente leitura'}), 403
     try:
         evento = Evento.query.get_or_404(evento_id)
         data = request.get_json()
@@ -269,6 +263,8 @@ def update_evento(current_user, evento_id):
 @evento_bp.route('/eventos/<int:evento_id>', methods=['DELETE'])
 @token_required
 def delete_evento(current_user, evento_id):
+    if current_user.is_readonly:
+        return jsonify({'error': 'Acesso negado: usuário somente leitura'}), 403
     try:
         evento = Evento.query.get_or_404(evento_id)
 

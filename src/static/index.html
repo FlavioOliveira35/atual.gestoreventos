@@ -85,26 +85,6 @@
                     </div>
                 </div>
                 <div class="filter-group">
-                    <label>
-                        <i class="fas fa-map-marker-alt"></i>
-                        Plantão (Estado):
-                    </label>
-                    <div id="stateCheckboxes" class="checkbox-group-horizontal">
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="state_sc" value="SC">
-                            <label for="state_sc">SC</label>
-                        </div>
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="state_rs" value="RS">
-                            <label for="state_rs">RS</label>
-                        </div>
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="state_pr" value="PR">
-                            <label for="state_pr">PR</label>
-                        </div>
-                    </div>
-                </div>
-                <div class="filter-group">
                     <label for="searchFilter">
                         <i class="fas fa-search"></i>
                         Buscar:
@@ -115,9 +95,12 @@
                     <button class="btn btn-secondary" id="btnStats" title="Estatísticas do Dia">
                         <i class="fas fa-chart-pie"></i>
                     </button>
+                    <button class="btn btn-secondary" id="btnStateFilter" title="Filtrar por Estado">
+                        <i class="fas fa-map-marked-alt"></i>
+                    </button>
                     <button class="btn btn-secondary" id="btnFiltroAvancado">
                         <i class="fas fa-filter"></i>
-                        Filtros
+                        Avançado
                     </button>
                     <button class="btn btn-secondary" id="btnLimparFiltros">
                         <i class="fas fa-times"></i>
@@ -637,6 +620,40 @@
              <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" id="statsModalCloseBtn">
                     Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- State Filter Modal -->
+    <div class="modal-overlay" id="stateFilterModalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-map-marked-alt"></i> Filtrar por Estado</h2>
+                <button class="modal-close" id="stateFilterModalClose"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div id="stateCheckboxesModal" class="checkbox-container">
+                     <div class="checkbox-group">
+                        <input type="checkbox" id="modal_state_sc" value="SC">
+                        <label for="modal_state_sc">Santa Catarina (SC)</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="modal_state_rs" value="RS">
+                        <label for="modal_state_rs">Rio Grande do Sul (RS)</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="modal_state_pr" value="PR">
+                        <label for="modal_state_pr">Paraná (PR)</label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                 <button type="button" class="btn btn-secondary" id="btnLimparFiltroEstado">
+                    <i class="fas fa-eraser"></i> Limpar
+                </button>
+                <button type="button" class="btn btn-primary" id="btnAplicarFiltroEstado">
+                    <i class="fas fa-check"></i> Aplicar
                 </button>
             </div>
         </div>
