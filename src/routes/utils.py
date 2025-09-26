@@ -68,9 +68,17 @@ def get_filtered_query(current_user):
 
     data_encerramento_inicio = parse_date(data_encerramento_inicio_str)
     data_encerramento_fim = parse_date(data_encerramento_fim_str)
-    if data_encerramento_inicio:
-        query = query.filter(cast(Evento.data_encerramento, Date) >= data_encerramento_inicio)
-    if data_encerramento_fim:
-        query = query.filter(cast(Evento.data_encerramento, Date) <= data_encerramento_fim)
+
+    # Filtro padrão para "Encerrado" no dia atual
+    # Se o status for 'Encerrado' e não houver um filtro de data de encerramento, mostra apenas os de hoje.
+    if status_filter == 'Encerrado' and not data_encerramento_inicio_str and not data_encerramento_fim_str:
+        today = datetime.utcnow().date()
+        query = query.filter(cast(Evento.data_encerramento, Date) == today)
+    else:
+        # Caso contrário, aplica os filtros de data de encerramento (se existirem)
+        if data_encerramento_inicio:
+            query = query.filter(cast(Evento.data_encerramento, Date) >= data_encerramento_inicio)
+        if data_encerramento_fim:
+            query = query.filter(cast(Evento.data_encerramento, Date) <= data_encerramento_fim)
 
     return query
