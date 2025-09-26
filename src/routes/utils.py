@@ -67,14 +67,11 @@ def get_filtered_query(current_user):
             if other_statuses:
                 conditions.append(Evento.status.in_(other_statuses))
 
-            # Compara se a data de encerramento está dentro do dia de hoje (timezone-safe)
-            today_start = func.date_trunc('day', func.now())
-            today_end = today_start + db.text("INTERVAL '1 day'")
+            # Compara a data de encerramento com a data atual no fuso horário de Brasília
             conditions.append(
                 db.and_(
                     Evento.status == 'Encerrado',
-                    Evento.data_encerramento >= today_start,
-                    Evento.data_encerramento < today_end
+                    cast(func.timezone('America/Sao_Paulo', Evento.data_encerramento), Date) == cast(func.timezone('America/Sao_Paulo', func.now()), Date)
                 )
             )
             query = query.filter(db.or_(*conditions))
