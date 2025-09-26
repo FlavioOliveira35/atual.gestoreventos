@@ -28,6 +28,7 @@ def get_filtered_query(current_user):
     data_fim_str = request.args.get('data_fim')
     data_encerramento_inicio_str = request.args.get('data_encerramento_inicio')
     data_encerramento_fim_str = request.args.get('data_encerramento_fim')
+    states_filter_str = request.args.get('states')
 
     query = Evento.query.options(
         joinedload(Evento.city),
@@ -36,15 +37,56 @@ def get_filtered_query(current_user):
         joinedload(Evento.equipe)
     )
 
-    user_city_ids = [city.id for city in current_user.cities]
-    if user_city_ids:
-        query = query.filter(Evento.city_id.in_(user_city_ids))
+    # Lógica de filtro por estado (plantão) ou por cidade (padrão)
+    if states_filter_str:
+        state_list = [s.strip().upper() for s in states_filter_str.split(',') if s.strip()]
+        if state_list:
+            query = query.join(Evento.city).filter(City.state.in_(state_list))
+    else:
+        user_city_ids = [city.id for city in current_user.cities]
+        if user_city_ids:
+            query = query.filter(Evento.city_id.in_(user_city_ids))
 
+    # Lógica de filtro de status e data de encerramento
+    statuses = []
     if status_filter:
-        statuses = status_filter.split(',')
-        if statuses:
+        statuses = [s.strip() for s in status_filter.split(',') if s.strip()]
+
+    data_encerramento_inicio = parse_date(data_encerramento_inicio_str)
+    data_encerramento_fim = parse_date(data_encerramento_fim_str)
+
+    apply_special_encerrado_filter = ('Encerrado' in statuses and
+                                      not data_encerramento_inicio_str and
+                                      not data_encerramento_fim_str)
+
+    if statuses:
+        if apply_special_encerrado_filter:
+            today = datetime.utcnow().date()
+            other_statuses = [s for s in statuses if s != 'Encerrado']
+
+            conditions = []
+            if other_statuses:
+                conditions.append(Evento.status.in_(other_statuses))
+
+            conditions.append(
+                db.and_(
+                    Evento.status == 'Encerrado',
+                    cast(Evento.data_encerramento, Date) == today
+                )
+            )
+            query = query.filter(db.or_(*conditions))
+        else:
+            # Filtro de status padrão
             query = query.filter(Evento.status.in_(statuses))
 
+    # Aplica o filtro de data de encerramento avançado apenas se a lógica especial não foi usada
+    if not apply_special_encerrado_filter:
+        if data_encerramento_inicio:
+            query = query.filter(cast(Evento.data_encerramento, Date) >= data_encerramento_inicio)
+        if data_encerramento_fim:
+            query = query.filter(cast(Evento.data_encerramento, Date) <= data_encerramento_fim)
+
+    # Filtros restantes (busca e data de abertura)
     if search_filter:
         search_term = f"%{search_filter}%"
         query = query.join(Evento.solicitante, isouter=True).join(Evento.ard, isouter=True).join(Evento.equipe, isouter=True).filter(
@@ -65,20 +107,5 @@ def get_filtered_query(current_user):
         query = query.filter(cast(Evento.data, Date) >= data_inicio)
     if data_fim:
         query = query.filter(cast(Evento.data, Date) <= data_fim)
-
-    data_encerramento_inicio = parse_date(data_encerramento_inicio_str)
-    data_encerramento_fim = parse_date(data_encerramento_fim_str)
-
-    # Filtro padrão para "Encerrado" no dia atual
-    # Se o status for 'Encerrado' e não houver um filtro de data de encerramento, mostra apenas os de hoje.
-    if status_filter == 'Encerrado' and not data_encerramento_inicio_str and not data_encerramento_fim_str:
-        today = datetime.utcnow().date()
-        query = query.filter(cast(Evento.data_encerramento, Date) == today)
-    else:
-        # Caso contrário, aplica os filtros de data de encerramento (se existirem)
-        if data_encerramento_inicio:
-            query = query.filter(cast(Evento.data_encerramento, Date) >= data_encerramento_inicio)
-        if data_encerramento_fim:
-            query = query.filter(cast(Evento.data_encerramento, Date) <= data_encerramento_fim)
 
     return query
