@@ -145,6 +145,32 @@ def get_eventos(current_user):
         'current_page': page
     })
 
+@evento_bp.route('/eventos/stats', methods=['GET'])
+@token_required
+def get_eventos_stats(current_user):
+    """
+    Endpoint para buscar estatísticas de contagem de eventos.
+    Respeita todos os filtros aplicados, exceto o de status.
+    """
+    try:
+        base_query = get_filtered_query(current_user, apply_status_filter=False)
+
+        # Status para contagem simples
+        status_to_count = ['Pendente', 'Aberto', 'Tratando', 'Encerramento']
+        stats = {status.lower(): base_query.filter(Evento.status == status).count() for status in status_to_count}
+
+        # Contagem especial para "Encerrado" no dia
+        encerrado_hoje_condition = db.and_(
+            Evento.status == 'Encerrado',
+            cast(Evento.data_encerramento.op('at time zone')('utc').op('at time zone')('America/Sao_Paulo'), Date) == cast(func.now().op('at time zone')('America/Sao_Paulo'), Date)
+        )
+        stats['encerrado_hoje'] = base_query.filter(encerrado_hoje_condition).count()
+
+        return jsonify(stats)
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 @evento_bp.route('/eventos', methods=['POST'])
 @token_required
 def create_evento(current_user):

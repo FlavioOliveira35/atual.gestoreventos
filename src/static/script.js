@@ -212,6 +212,32 @@ function getFilterParams() {
     return params;
 }
 
+async function loadStats() {
+    try {
+        const params = getFilterParams();
+        const url = `/api/eventos/stats?${params.toString()}`;
+        const response = await fetchWithAuth(url);
+
+        if (!response.ok) {
+            throw new Error(`Erro HTTP: ${response.status}`);
+        }
+        const stats = await response.json();
+
+        document.getElementById('statsEncerradoHoje').textContent = stats.encerrado_hoje ?? '0';
+        document.getElementById('statsPendente').textContent = stats.pendente ?? '0';
+        document.getElementById('statsAberto').textContent = stats.aberto ?? '0';
+        document.getElementById('statsTratando').textContent = stats.tratando ?? '0';
+        document.getElementById('statsEncerramento').textContent = stats.encerramento ?? '0';
+    } catch (error) {
+        console.error('Erro ao carregar estatísticas:', error);
+        document.getElementById('statsEncerradoHoje').textContent = '-';
+        document.getElementById('statsPendente').textContent = '-';
+        document.getElementById('statsAberto').textContent = '-';
+        document.getElementById('statsTratando').textContent = '-';
+        document.getElementById('statsEncerramento').textContent = '-';
+    }
+}
+
 async function loadEventos(page = 1) {
     currentPage = page;
     updateViewState('loading');
@@ -243,6 +269,7 @@ async function loadEventos(page = 1) {
 
 function applyFilters() {
     loadEventos(1);
+    loadStats(); // Adicionado para atualizar as estatísticas
 }
 
 function renderEventos(eventos) {

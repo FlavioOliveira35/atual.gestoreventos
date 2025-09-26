@@ -18,11 +18,12 @@ def parse_date(date_str):
     except ValueError:
         return None
 
-def get_filtered_query(current_user):
+def get_filtered_query(current_user, apply_status_filter=True):
     """
     Constrói e retorna uma query SQLAlchemy para Eventos com base nos filtros da request.
+    O parâmetro `apply_status_filter` controla se o filtro de status deve ser aplicado.
     """
-    status_filter = request.args.get('status')
+    status_filter = request.args.get('status') if apply_status_filter else None
     search_filter = request.args.get('search')
     data_inicio_str = request.args.get('data_inicio')
     data_fim_str = request.args.get('data_fim')
@@ -68,10 +69,13 @@ def get_filtered_query(current_user):
                 conditions.append(Evento.status.in_(other_statuses))
 
             # Compara a data de encerramento com a data atual no fuso horário de Brasília
+            # 1. Trata a data de encerramento (assumida como UTC) e a converte para o fuso 'America/Sao_Paulo'
+            # 2. Trata a data atual do servidor e a converte para o fuso 'America/Sao_Paulo'
+            # 3. Compara se as datas resultantes (dia/mês/ano) são iguais.
             conditions.append(
                 db.and_(
                     Evento.status == 'Encerrado',
-                    cast(func.timezone('America/Sao_Paulo', Evento.data_encerramento), Date) == cast(func.timezone('America/Sao_Paulo', func.now()), Date)
+                    cast(Evento.data_encerramento.op('at time zone')('utc').op('at time zone')('America/Sao_Paulo'), Date) == cast(func.now().op('at time zone')('America/Sao_Paulo'), Date)
                 )
             )
             query = query.filter(db.or_(*conditions))
