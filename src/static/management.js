@@ -305,7 +305,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const data = {
             username: usernameField.value,
             email: userEmailField.value,
-            city_ids: selectedCityIds
+            city_ids: selectedCityIds,
+            is_readonly: document.getElementById('is_readonly').checked
         };
         if (userPasswordField.value) data.password = userPasswordField.value;
 
@@ -328,6 +329,7 @@ document.addEventListener('DOMContentLoaded', function() {
             userEmailField.value = user.email;
             userPasswordField.required = false;
             userPasswordField.value = '';
+            document.getElementById('is_readonly').checked = user.is_readonly; // Adicionado
             await populateCityCheckboxes(user.cities.map(c => c.id));
             userModalOverlay.classList.add('active');
         }

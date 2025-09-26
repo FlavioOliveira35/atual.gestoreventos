@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, current_app
 from sqlalchemy.orm import joinedload
-from sqlalchemy import cast, Date
+from sqlalchemy import cast, Date, func, case
 from src.extensions import db, scheduler
 from src.models.evento import Evento
 from src.models.notification_setting import NotificationSetting
@@ -155,21 +155,37 @@ def get_eventos_stats(current_user):
     try:
         base_query = get_filtered_query(current_user, apply_status_filter=False)
 
-        # Status para contagem simples
-        status_to_count = ['Pendente', 'Aberto', 'Tratando', 'Encerramento']
-        stats = {status.lower(): base_query.filter(Evento.status == status).count() for status in status_to_count}
-
-        # Contagem especial para "Encerrado" no dia
-        encerrado_hoje_condition = db.and_(
-            Evento.status == 'Encerrado',
-            cast(Evento.data_encerramento.op('at time zone')('utc').op('at time zone')('America/Sao_Paulo'), Date) == cast(func.now().op('at time zone')('America/Sao_Paulo'), Date)
+        encerrado_hoje_case = case(
+            (
+                db.and_(
+                    Evento.status == 'Encerrado',
+                    cast(Evento.data_encerramento.op('at time zone')('utc').op('at time zone')('America/Sao_Paulo'), Date) == cast(func.now().op('at time zone')('America/Sao_Paulo'), Date)
+                ), 1
+            ),
+            else_=0
         )
-        stats['encerrado_hoje'] = base_query.filter(encerrado_hoje_condition).count()
+
+        results = db.session.query(
+            func.count(case((Evento.status == 'Pendente', 1))).label('pendente'),
+            func.count(case((Evento.status == 'Aberto', 1))).label('aberto'),
+            func.count(case((Evento.status == 'Tratando', 1))).label('tratando'),
+            func.count(case((Evento.status == 'Encerramento', 1))).label('encerramento'),
+            func.sum(encerrado_hoje_case).label('encerrado_hoje')
+        ).select_from(base_query.subquery()).one()
+
+        stats = {
+            'pendente': results.pendente,
+            'aberto': results.aberto,
+            'tratando': results.tratando,
+            'encerramento': results.encerramento,
+            'encerrado_hoje': results.encerrado_hoje or 0
+        }
 
         return jsonify(stats)
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        print(f"Erro detalhado em get_eventos_stats: {e}")
+        return jsonify({'error': 'Erro ao calcular estatísticas.'}), 500
 
 @evento_bp.route('/eventos', methods=['POST'])
 @token_required
